@@ -37,7 +37,7 @@ async def ask_ai(prompt):
 
         response = await asyncio.to_thread(
             lambda: client.chat.completions.create(
-                model="llama3-70b-versatile",
+                model="llama-3.3-70b-versatile",
                 messages=[
                     {
                         "role": "system",

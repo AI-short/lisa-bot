@@ -1,17 +1,10 @@
-import os
 import discord
 from discord.ext import commands
-from groq import Groq
 import asyncio
 
-# ================= CONFIG =================
-
-TOKEN = os.getenv("TOKEN")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
-client = Groq(api_key=GROQ_API_KEY)
-
-# ================= DISCORD =================
+from config import TOKEN
+from onboarding import handle_onboarding, auto_onboard_existing_members
+from translation import handle_translation
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -23,44 +16,15 @@ bot = commands.Bot(
     help_command=None
 )
 
-# ================= AI FUNCTION =================
-
-async def ask_ai(prompt):
-
-    try:
-
-        response = await asyncio.to_thread(
-            lambda: client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are Lisa, a smart AI Discord assistant."
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ]
-            )
-        )
-
-        return response.choices[0].message.content
-
-    except Exception as e:
-
-        print("GROQ ERROR:", e)
-
-        return "🌸 Lisa AI is resting right now."
-
-# ================= READY EVENT =================
-
 @bot.event
 async def on_ready():
 
-    print(f"🌸 Lisa AI Online: {bot.user}")
+    print(f"🌸 Lisa Online: {bot.user}")
 
-# ================= MAIN MESSAGE EVENT =================
+@bot.event
+async def on_member_join(member):
+
+    await handle_onboarding(member)
 
 @bot.event
 async def on_message(message):
@@ -68,301 +32,25 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    text = message.content.lower().strip()
+    # Translation system
+    await handle_translation(bot, message)
 
-    # =====================================================
-    # ADMIN COMMANDS
-    # =====================================================
-
+    # Admin setup command
     if (
         message.author.guild_permissions.administrator
-        and "lisa" in text
+        and message.content.lower() == "lisa setup language onboarding"
     ):
 
-        # ================= CREATE CHANNEL =================
-
-        if (
-            "create" in text
-            and "channel" in text
-            and "admin" not in text
-        ):
-
-            words = text.split()
-
-            ignore = [
-                "lisa",
-                "create",
-                "channel"
-            ]
-
-            channel_name = None
-
-            for word in words:
-
-                if word not in ignore:
-
-                    channel_name = word
-                    break
-
-            if not channel_name:
-
-                await message.channel.send(
-                    "🌸 Please provide a channel name."
-                )
-
-                return
-
-            existing = discord.utils.get(
-                message.guild.channels,
-                name=channel_name
-            )
-
-            if existing:
-
-                await message.channel.send(
-                    f"🌸 #{channel_name} already exists."
-                )
-
-                return
-
-            await message.guild.create_text_channel(
-                channel_name
-            )
-
-            await message.channel.send(
-                f"🌸 Created #{channel_name} channel."
-            )
-
-            return
-
-        # ================= DELETE CHANNEL =================
-
-        if (
-            "delete" in text
-            and "channel" in text
-        ):
-
-            words = text.split()
-
-            ignore = [
-                "lisa",
-                "delete",
-                "channel"
-            ]
-
-            channel_name = None
-
-            for word in words:
-
-                if word not in ignore:
-
-                    channel_name = word
-                    break
-
-            if not channel_name:
-
-                await message.channel.send(
-                    "🌸 Please provide a channel name."
-                )
-
-                return
-
-            target = discord.utils.get(
-                message.guild.channels,
-                name=channel_name
-            )
-
-            if not target:
-
-                await message.channel.send(
-                    f"🌸 #{channel_name} not found."
-                )
-
-                return
-
-            deleted_name = target.name
-
-            await target.delete()
-
-            await message.channel.send(
-                f"🌸 Deleted #{deleted_name} channel."
-            )
-
-            return
-
-        # ================= CREATE PRIVATE ADMIN CHANNEL =================
-
-        if "create admin channel" in text:
-
-            guild = message.guild
-
-            existing = discord.utils.get(
-                guild.channels,
-                name="lisa-admin"
-            )
-
-            if existing:
-
-                await message.channel.send(
-                    "🌸 lisa-admin already exists."
-                )
-
-                return
-
-            overwrites = {
-                guild.default_role: discord.PermissionOverwrite(
-                    view_channel=False
-                )
-            }
-
-            for role in guild.roles:
-
-                if role.permissions.administrator:
-
-                    overwrites[role] = discord.PermissionOverwrite(
-                        view_channel=True,
-                        send_messages=True
-                    )
-
-            await guild.create_text_channel(
-                "lisa-admin",
-                overwrites=overwrites
-            )
-
-            await message.channel.send(
-                "🌸 Created private admin channel."
-            )
-
-            return
-
-        # ================= LOCK CHANNEL =================
-
-        if "lock this channel" in text:
-
-            overwrite = message.channel.overwrites_for(
-                message.guild.default_role
-            )
-
-            overwrite.send_messages = False
-
-            await message.channel.set_permissions(
-                message.guild.default_role,
-                overwrite=overwrite
-            )
-
-            await message.channel.send(
-                "🌸 Channel locked."
-            )
-
-            return
-
-        # ================= UNLOCK CHANNEL =================
-
-        if "unlock this channel" in text:
-
-            overwrite = message.channel.overwrites_for(
-                message.guild.default_role
-            )
-
-            overwrite.send_messages = True
-
-            await message.channel.set_permissions(
-                message.guild.default_role,
-                overwrite=overwrite
-            )
-
-            await message.channel.send(
-                "🌸 Channel unlocked."
-            )
-
-            return
-
-        # ================= ADMIN AI CHAT =================
-
-        response = await ask_ai(message.content)
-
-        await message.channel.send(response)
-
-        return
-
-    # =====================================================
-    # USER AI CHAT
-    # =====================================================
-
-    if bot.user in message.mentions:
-
-        cleaned = message.content.replace(
-            f"<@{bot.user.id}>",
-            ""
-        ).strip()
-
-        simple = cleaned.lower()
-
-        # ================= SIMPLE RESPONSES =================
-
-        if (
-            "hello" in simple
-            or "hi" in simple
-            or "hey" in simple
-        ):
-
-            await message.reply(
-                "🌸 Hello! How can I help you today?"
-            )
-
-            return
-
-        if (
-            "how are you" in simple
-            or "how are u" in simple
-        ):
-
-            await message.reply(
-                "🌸 I'm doing great! How about you?"
-            )
-
-            return
-
-        if "who are you" in simple:
-
-            await message.reply(
-                "🌸 I'm Lisa, your AI Discord assistant!"
-            )
-
-            return
-
-        if "thank" in simple:
-
-            await message.reply(
-                "🌸 You're welcome!"
-            )
-
-            return
-
-        # ================= AI CHAT =================
-
-        response = await ask_ai(cleaned)
-
-        await message.reply(response)
-
-        return
+        await message.channel.send(
+            "🌸 Starting onboarding for all members..."
+        )
+
+        await auto_onboard_existing_members(message.guild)
+
+        await message.channel.send(
+            "🌸 Finished onboarding process."
+        )
 
     await bot.process_commands(message)
-
-# ================= HELP COMMAND =================
-
-@bot.command()
-async def help(ctx):
-
-    await ctx.send(
-        "🌸 Lisa Commands\n\n"
-        "Lisa create gaming channel\n"
-        "Lisa delete gaming channel\n"
-        "Lisa create admin channel\n"
-        "Lisa lock this channel\n"
-        "Lisa unlock this channel"
-    )
-
-# ================= START BOT =================
 
 bot.run(TOKEN)

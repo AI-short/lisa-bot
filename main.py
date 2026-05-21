@@ -122,46 +122,6 @@ async def on_message(message):
 
                     return
 
-        # LOCK CHANNEL
-        if "lock this channel" in text:
-
-            overwrite = message.channel.overwrites_for(
-                message.guild.default_role
-            )
-
-            overwrite.send_messages = False
-
-            await message.channel.set_permissions(
-                message.guild.default_role,
-                overwrite=overwrite
-            )
-
-            await message.channel.send(
-                "🌸 Channel locked."
-            )
-
-            return
-
-        # UNLOCK CHANNEL
-        if "unlock this channel" in text:
-
-            overwrite = message.channel.overwrites_for(
-                message.guild.default_role
-            )
-
-            overwrite.send_messages = True
-
-            await message.channel.set_permissions(
-                message.guild.default_role,
-                overwrite=overwrite
-            )
-
-            await message.channel.send(
-                "🌸 Channel unlocked."
-            )
-
-            return
-
         # CREATE PRIVATE ADMIN CHANNEL
         if "create admin channel" in text:
 
@@ -206,6 +166,46 @@ async def on_message(message):
 
             return
 
+        # LOCK CHANNEL
+        if "lock this channel" in text:
+
+            overwrite = message.channel.overwrites_for(
+                message.guild.default_role
+            )
+
+            overwrite.send_messages = False
+
+            await message.channel.set_permissions(
+                message.guild.default_role,
+                overwrite=overwrite
+            )
+
+            await message.channel.send(
+                "🌸 Channel locked."
+            )
+
+            return
+
+        # UNLOCK CHANNEL
+        if "unlock this channel" in text:
+
+            overwrite = message.channel.overwrites_for(
+                message.guild.default_role
+            )
+
+            overwrite.send_messages = True
+
+            await message.channel.set_permissions(
+                message.guild.default_role,
+                overwrite=overwrite
+            )
+
+            await message.channel.send(
+                "🌸 Channel unlocked."
+            )
+
+            return
+
         # AI ADMIN RESPONSE
         response = await ask_ai(
             f"""
@@ -229,12 +229,17 @@ async def on_message(message):
         cleaned = message.content.replace(
             f"<@{bot.user.id}>",
             ""
-        )
+        ).strip()
 
-        # SIMPLE FREE REPLIES
-        simple = cleaned.lower().strip()
+        simple = cleaned.lower()
 
-        if "hello" in simple or "hi" in simple:
+        # ================= SIMPLE FREE REPLIES =================
+
+        if (
+            "hello" in simple
+            or "hi" in simple
+            or "hey" in simple
+        ):
 
             await message.reply(
                 "🌸 Hello! How can I help you today?"
@@ -242,10 +247,13 @@ async def on_message(message):
 
             return
 
-        if "how are you" in simple:
+        if (
+            "how are you" in simple
+            or "how are u" in simple
+        ):
 
             await message.reply(
-                "🌸 I'm doing great!"
+                "🌸 I'm doing great! How about you?"
             )
 
             return
@@ -258,7 +266,16 @@ async def on_message(message):
 
             return
 
-        # AI FOR COMPLEX QUESTIONS
+        if "thank" in simple:
+
+            await message.reply(
+                "🌸 You're welcome!"
+            )
+
+            return
+
+        # ================= AI FOR COMPLEX QUESTIONS =================
+
         response = await ask_ai(
             f"""
             You are Lisa AI.
@@ -282,11 +299,11 @@ async def on_message(message):
 async def help(ctx):
 
     await ctx.send(
-        "🌸 Lisa AI Commands\\n\\n"
-        "Admins can say:\\n"
-        "Lisa create gaming channel\\n"
-        "Lisa create admin channel\\n"
-        "Lisa lock this channel\\n"
+        "🌸 Lisa AI Commands\n\n"
+        "Admins can say:\n"
+        "Lisa create gaming channel\n"
+        "Lisa create admin channel\n"
+        "Lisa lock this channel\n"
         "Lisa unlock this channel"
     )
 

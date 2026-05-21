@@ -15,7 +15,7 @@ import discord
 from discord.ext import commands
 from deep_translator import GoogleTranslator
 from langdetect import detect as detect_lang
-import google.generativeai as genai
+from google import genai
 
 # ===================== CONFIGURATION =====================
 TOKEN      = os.environ.get("TOKEN", "YOUR_TOKEN_HERE")
@@ -43,8 +43,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(na
 log = logging.getLogger("lisa")
 
 # Setup Gemini AI
-genai.configure(api_key=GEMINI_KEY)
-gemini = genai.GenerativeModel("gemini-1.5-flash")
+client = genai.Client(api_key=GEMINI_KEY)
+
 
 DATA_FILE = Path("lisa_users.json")
 _user_data:    dict[str, dict] = {}
@@ -93,8 +93,12 @@ async def lisa_think(prompt: str) -> str:
             "When asked to do something, respond with a friendly confirmation. "
             "Never use technical jargon."
         )
+        full_prompt = f"{system}\n\nUser: {prompt}"
         response = await asyncio.to_thread(
-            gemini.generate_content, f"{system}\n\nUser: {prompt}"
+            lambda: client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=full_prompt
+            )
         )
         return response.text.strip()
     except Exception as e:
@@ -214,7 +218,7 @@ intents.messages = True
 intents.message_content = True
 intents.members = True
 
-bot = commands.Bot(command_prefix="lisa!", intents=intents)
+bot = commands.Bot(command_prefix="lisa!", intents=intents, help_command=None)
 
 
 @bot.event
@@ -608,7 +612,7 @@ async def _send_translation(text: str, sender_name: str, target_lang: str, chann
 # Commands
 # ---------------------------------------------------------------------------
 
-@bot.command(name="help")
+@bot.command(name="lisa_help")
 async def help_cmd(ctx: commands.Context) -> None:
     await ctx.send(
         "**Lisa Commands** 🌸\n"

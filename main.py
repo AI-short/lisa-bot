@@ -11,17 +11,16 @@ from translation import (
 )
 
 # ==========================================
-# DISCORD INTENTS
+# INTENTS
 # ==========================================
 
 intents = discord.Intents.default()
 
 intents.message_content = True
 intents.members = True
-intents.guilds = True
 
 # ==========================================
-# BOT SETUP
+# BOT
 # ==========================================
 
 bot = commands.Bot(
@@ -30,7 +29,7 @@ bot = commands.Bot(
 )
 
 # ==========================================
-# BOT READY
+# READY EVENT
 # ==========================================
 
 @bot.event
@@ -41,16 +40,25 @@ async def on_ready():
     )
 
 # ==========================================
-# MESSAGE HANDLER
+# MEMBER JOIN
+# ==========================================
+
+@bot.event
+async def on_member_join(member):
+
+    await process_user_language(
+        bot,
+        member
+    )
+
+# ==========================================
+# MESSAGE EVENT
 # ==========================================
 
 @bot.event
 async def on_message(message):
 
-    # ======================================
-    # IGNORE SELF
-    # ======================================
-
+    # Ignore self
     if message.author == bot.user:
         return
 
@@ -58,17 +66,15 @@ async def on_message(message):
     # SAFE ADMIN CHECK
     # ======================================
 
-    is_admin = False
-
-    if message.guild:
-
-        is_admin = (
-            message.author.guild_permissions
-            .administrator
-        )
+    is_admin = (
+        message.guild
+        and
+        message.author.guild_permissions
+        .administrator
+    )
 
     # ======================================
-    # DM PROCESSING
+    # DM HANDLING
     # ======================================
 
     if isinstance(
@@ -91,10 +97,6 @@ async def on_message(message):
 
         content = message.content.lower()
 
-        # ==================================
-        # START ONBOARDING
-        # ==================================
-
         if (
             "lisa setup language onboarding"
             in content
@@ -115,16 +117,12 @@ async def on_message(message):
             return
 
     # ======================================
-    # TRANSLATION SYSTEM
+    # TRANSLATION
     # ======================================
 
     await handle_translation(
         bot,
         message
     )
-
-    # ======================================
-    # PROCESS COMMANDS
-    # ======================================
 
     await bot.process_commands(message)

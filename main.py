@@ -1,56 +1,130 @@
 import discord
 from discord.ext import commands
-import asyncio
 
-from config import TOKEN
-from onboarding import handle_onboarding, auto_onboard_existing_members
-from translation import handle_translation
+from onboarding import (
+    auto_onboard_existing_members,
+    process_user_language
+)
+
+from translation import (
+    handle_translation
+)
+
+# ==========================================
+# DISCORD INTENTS
+# ==========================================
 
 intents = discord.Intents.default()
+
 intents.message_content = True
 intents.members = True
+intents.guilds = True
+
+# ==========================================
+# BOT SETUP
+# ==========================================
 
 bot = commands.Bot(
-    command_prefix="lisa!",
-    intents=intents,
-    help_command=None
+    command_prefix="!",
+    intents=intents
 )
+
+# ==========================================
+# BOT READY
+# ==========================================
 
 @bot.event
 async def on_ready():
 
-    print(f"🌸 Lisa Online: {bot.user}")
+    print(
+        f"🌸 Lisa Online: {bot.user}"
+    )
 
-@bot.event
-async def on_member_join(member):
-
-    await handle_onboarding(member)
+# ==========================================
+# MESSAGE HANDLER
+# ==========================================
 
 @bot.event
 async def on_message(message):
 
-    if message.author.bot:
+    # ======================================
+    # IGNORE SELF
+    # ======================================
+
+    if message.author == bot.user:
         return
 
-    # Translation system
-    await handle_translation(bot, message)
+    # ======================================
+    # SAFE ADMIN CHECK
+    # ======================================
 
-    # Admin setup command
-    if (
-        message.author.guild_permissions.administrator
-        and message.content.lower() == "lisa setup language onboarding"
+    is_admin = False
+
+    if message.guild:
+
+        is_admin = (
+            message.author.guild_permissions
+            .administrator
+        )
+
+    # ======================================
+    # DM PROCESSING
+    # ======================================
+
+    if isinstance(
+        message.channel,
+        discord.DMChannel
     ):
 
-        await message.channel.send(
-            "🌸 Starting onboarding for all members..."
+        await process_user_language(
+            bot,
+            message
         )
 
-        await auto_onboard_existing_members(message.guild)
+        return
 
-        await message.channel.send(
-            "🌸 Finished onboarding process."
-        )
+    # ======================================
+    # ADMIN COMMANDS
+    # ======================================
+
+    if is_admin:
+
+        content = message.content.lower()
+
+        # ==================================
+        # START ONBOARDING
+        # ==================================
+
+        if (
+            "lisa setup language onboarding"
+            in content
+        ):
+
+            await message.channel.send(
+                "🌸 Starting onboarding..."
+            )
+
+            await auto_onboard_existing_members(
+                message.guild
+            )
+
+            await message.channel.send(
+                "🌸 Onboarding completed."
+            )
+
+            return
+
+    # ======================================
+    # TRANSLATION SYSTEM
+    # ======================================
+
+    await handle_translation(
+        bot,
+        message
+    )
+
+    # ======================================
+    # PROCESS COMMANDS
+    # ======================================
 
     await bot.process_commands(message)
-
-bot.run(TOKEN)

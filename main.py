@@ -29,8 +29,8 @@ async def ask_ai(prompt):
         )
         return response.text
     except Exception as e:
-        print(e)
-        return "🌸 AI is sleeping right now."
+    print("GEMINI ERROR:", e)
+    return f"🌸 Error: {e}"
 
 @bot.event
 async def on_ready():

@@ -6,11 +6,74 @@ from database import (
     load_users
 )
 
-# ================= SEND ONBOARDING DM =================
+# ==========================================
+# ACTIVE ONBOARDING SESSIONS
+# ==========================================
+
+onboarding_sessions = {}
+
+# ==========================================
+# LANGUAGE ROLES
+# ==========================================
+
+LANGUAGE_ROLES = [
+    "english",
+    "hindi",
+    "japanese",
+    "spanish",
+    "french",
+    "arabic",
+    "german",
+    "russian"
+]
+
+# ==========================================
+# SEND ONBOARDING DM
+# ==========================================
 
 async def handle_onboarding(member):
 
     try:
+
+        users = load_users()
+
+        # ======================================
+        # SKIP CONFIGURED USERS
+        # ======================================
+
+        already_configured = False
+
+        # Database check
+        if str(member.id) in users:
+            already_configured = True
+
+        # Role check
+        for role in member.roles:
+
+            if role.name.lower() in LANGUAGE_ROLES:
+
+                already_configured = True
+                break
+
+        if already_configured:
+
+            print(
+                f"Skipping configured user: {member}"
+            )
+
+            return
+
+        # ======================================
+        # STORE SESSION
+        # ======================================
+
+        onboarding_sessions[
+            member.id
+        ] = member.guild.id
+
+        # ======================================
+        # SEND DM
+        # ======================================
 
         dm = await member.create_dm()
 
@@ -21,47 +84,91 @@ async def handle_onboarding(member):
             "Language: Hindi"
         )
 
+        print(
+            f"Onboarding DM sent to {member}"
+        )
+
     except Exception as e:
 
         print("DM ERROR:", e)
 
-# ================= ONBOARD EXISTING MEMBERS =================
+# ==========================================
+# ONBOARD EXISTING MEMBERS
+# ==========================================
 
 async def auto_onboard_existing_members(guild):
-
-    users = load_users()
 
     for member in guild.members:
 
         if member.bot:
             continue
 
-        # Skip already configured users
-        if str(member.id) in users:
-
-            print(
-                f"Skipping configured user: {member}"
-            )
-
-            continue
-
         await handle_onboarding(member)
 
         await asyncio.sleep(1)
 
-# ================= PROCESS LANGUAGE SETUP =================
+# ==========================================
+# PROCESS LANGUAGE SETUP
+# ==========================================
 
 async def process_user_language(bot, message):
 
     try:
 
+        user_id = message.author.id
+
+        # ======================================
+        # CHECK SESSION
+        # ======================================
+
+        if user_id not in onboarding_sessions:
+
+            await message.channel.send(
+                "🌸 No active onboarding session found."
+            )
+
+            return
+
+        guild_id = onboarding_sessions[user_id]
+
+        guild = bot.get_guild(guild_id)
+
+        if not guild:
+
+            await message.channel.send(
+                "🌸 Server not found."
+            )
+
+            return
+
+        member = guild.get_member(user_id)
+
+        if not member:
+
+            await message.channel.send(
+                "🌸 Could not find your server profile."
+            )
+
+            return
+
         content = message.content.strip()
 
-        # Validate format
+        # ======================================
+        # VALIDATE FORMAT
+        # ======================================
+
         if (
             "Country:" not in content
             or "Language:" not in content
         ):
+
+            await message.channel.send(
+                "🌸 Invalid format.\n\n"
+                "Use:\n"
+                "Country: India\n"
+                "Language: Hindi"
+            )
+
             return
 
         lines = content.split("\n")
@@ -80,36 +187,15 @@ async def process_user_language(bot, message):
             .title()
         )
 
-        guild = bot.guilds[0]
-
-        member = guild.get_member(message.author.id)
-
-        if not member:
-
-            await message.channel.send(
-                "🌸 Could not find your server profile."
-            )
-
-            return
-
-        # ==========================================
+        # ======================================
         # REMOVE OLD LANGUAGE ROLES
-        # ==========================================
+        # ======================================
 
         removable_roles = []
 
         for role in member.roles:
 
-            if role.name.lower() in [
-                "english",
-                "hindi",
-                "japanese",
-                "spanish",
-                "french",
-                "arabic",
-                "german",
-                "russian"
-            ]:
+            if role.name.lower() in LANGUAGE_ROLES:
 
                 removable_roles.append(role)
 
@@ -119,9 +205,9 @@ async def process_user_language(bot, message):
                 *removable_roles
             )
 
-        # ==========================================
+        # ======================================
         # CREATE ROLE IF MISSING
-        # ==========================================
+        # ======================================
 
         role = discord.utils.get(
             guild.roles,
@@ -134,9 +220,9 @@ async def process_user_language(bot, message):
                 name=language
             )
 
-        # ==========================================
-        # CREATE LANGUAGE CHANNEL IF MISSING
-        # ==========================================
+        # ======================================
+        # CREATE CHANNEL IF MISSING
+        # ======================================
 
         channel_name = language.lower()
 
@@ -159,12 +245,13 @@ async def process_user_language(bot, message):
 
             channel = await guild.create_text_channel(
                 channel_name,
-                overwrites=overwrites
+                overwrites=overwrites,
+                topic=f"{language} Viking Rise community"
             )
 
-        # ==========================================
-        # REMOVE COMMON CHANNEL ACCESS
-        # ==========================================
+        # ======================================
+        # REMOVE COMMON ACCESS
+        # ======================================
 
         common_channel = discord.utils.get(
             guild.channels,
@@ -184,15 +271,15 @@ async def process_user_language(bot, message):
                 overwrite=overwrite
             )
 
-        # ==========================================
-        # GIVE LANGUAGE ROLE
-        # ==========================================
+        # ======================================
+        # GIVE ROLE
+        # ======================================
 
         await member.add_roles(role)
 
-        # ==========================================
-        # SAVE USER DATA
-        # ==========================================
+        # ======================================
+        # SAVE USER
+        # ======================================
 
         save_user(
             str(member.id),
@@ -200,16 +287,28 @@ async def process_user_language(bot, message):
             language
         )
 
-        # ==========================================
-        # SUCCESS MESSAGE
-        # ==========================================
+        # ======================================
+        # REMOVE SESSION
+        # ======================================
+
+        if user_id in onboarding_sessions:
+
+            del onboarding_sessions[user_id]
+
+        # ======================================
+        # SUCCESS RESPONSE
+        # ======================================
 
         await message.channel.send(
-            f"🌸 Setup completed!\n\n"
+            f"🌸 Setup completed successfully!\n\n"
             f"Country: {country}\n"
             f"Language: {language}\n\n"
-            f"Your main channel is now "
+            f"Your main communication channel is now:\n"
             f"#{channel_name}"
+        )
+
+        print(
+            f"Setup completed for {member}"
         )
 
     except Exception as e:
@@ -217,5 +316,5 @@ async def process_user_language(bot, message):
         print("PROCESS ERROR:", e)
 
         await message.channel.send(
-            f"🌸 Error: {e}"
+            f"🌸 Error:\n{e}"
         )

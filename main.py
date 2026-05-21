@@ -1,5 +1,5 @@
 """
-Lisa AI Discord Bot - GROQ Version
+Lisa AI Discord Bot - FINAL FIXED VERSION
 """
 
 import os
@@ -60,7 +60,7 @@ async def ask_ai(prompt):
 
         print("GROQ ERROR:", e)
 
-        return f"🌸 GROQ Error: {e}"
+        return "🌸 Lisa AI is resting right now."
 
 # ================= READY =================
 
@@ -77,17 +77,24 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    text = message.content.lower()
+    text = message.content.lower().strip()
 
-    # ================= ADMIN COMMANDS =================
+    # =====================================================
+    # ADMIN COMMANDS
+    # =====================================================
 
     if (
         message.author.guild_permissions.administrator
         and "lisa" in text
     ):
 
-        # CREATE CHANNEL
-        if "create" in text and "channel" in text:
+        # ================= CREATE NORMAL CHANNEL =================
+
+        if (
+            "create" in text
+            and "channel" in text
+            and "admin" not in text
+        ):
 
             words = text.split()
 
@@ -97,32 +104,48 @@ async def on_message(message):
                 "channel"
             ]
 
+            channel_name = None
+
             for word in words:
 
                 if word not in ignore:
 
-                    existing = discord.utils.get(
-                        message.guild.channels,
-                        name=word
-                    )
+                    channel_name = word
+                    break
 
-                    if existing:
+            if not channel_name:
 
-                        await message.channel.send(
-                            f"🌸 #{word} already exists."
-                        )
+                await message.channel.send(
+                    "🌸 Please give a channel name."
+                )
 
-                        return
+                return
 
-                    await message.guild.create_text_channel(word)
+            existing = discord.utils.get(
+                message.guild.channels,
+                name=channel_name
+            )
 
-                    await message.channel.send(
-                        f"🌸 Created #{word} channel."
-                    )
+            if existing:
 
-                    return
+                await message.channel.send(
+                    f"🌸 #{channel_name} already exists."
+                )
 
-        # CREATE PRIVATE ADMIN CHANNEL
+                return
+
+            await message.guild.create_text_channel(
+                channel_name
+            )
+
+            await message.channel.send(
+                f"🌸 Created #{channel_name} channel."
+            )
+
+            return
+
+        # ================= CREATE PRIVATE ADMIN CHANNEL =================
+
         if "create admin channel" in text:
 
             guild = message.guild
@@ -166,7 +189,8 @@ async def on_message(message):
 
             return
 
-        # LOCK CHANNEL
+        # ================= LOCK CHANNEL =================
+
         if "lock this channel" in text:
 
             overwrite = message.channel.overwrites_for(
@@ -186,7 +210,8 @@ async def on_message(message):
 
             return
 
-        # UNLOCK CHANNEL
+        # ================= UNLOCK CHANNEL =================
+
         if "unlock this channel" in text:
 
             overwrite = message.channel.overwrites_for(
@@ -206,7 +231,8 @@ async def on_message(message):
 
             return
 
-        # AI ADMIN RESPONSE
+        # ================= AI ADMIN CHAT =================
+
         response = await ask_ai(
             f"""
             You are Lisa AI.
@@ -222,7 +248,9 @@ async def on_message(message):
 
         return
 
-    # ================= USER AI CHAT =================
+    # =====================================================
+    # USER AI CHAT
+    # =====================================================
 
     if bot.user in message.mentions:
 
@@ -274,7 +302,7 @@ async def on_message(message):
 
             return
 
-        # ================= AI FOR COMPLEX QUESTIONS =================
+        # ================= AI QUESTIONS =================
 
         response = await ask_ai(
             f"""
@@ -293,7 +321,7 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# ================= COMMAND =================
+# ================= HELP COMMAND =================
 
 @bot.command()
 async def help(ctx):

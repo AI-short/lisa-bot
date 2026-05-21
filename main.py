@@ -691,6 +691,66 @@ async def setup_cmd(ctx: commands.Context) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Onboard existing members
+# ---------------------------------------------------------------------------
+
+@bot.command(name="onboard")
+@commands.has_permissions(administrator=True)
+async def onboard_all(ctx: commands.Context) -> None:
+    """Admin only: lisa!onboard — greets all existing members who haven't been set up yet."""
+    guild   = ctx.guild
+    count   = 0
+
+    # Find common channel
+    category = discord.utils.get(guild.categories, name=CATEGORY_NAME)
+    lisa_ids  = {c.id for c in category.channels} if category else set()
+    common_ch = next(
+        (c for c in guild.text_channels if c.id not in lisa_ids), None
+    )
+
+    for member in guild.members:
+        if member.bot:
+            continue
+        uid  = str(member.id)
+        user = _user_data.get(uid, {})
+        if user.get("step") == "complete":
+            continue  # Already onboarded
+
+        # Register them
+        _user_data[uid] = {
+            "step": "awaiting_name",
+            "name": "", "country": "", "lang_code": "",
+            "guild_id": guild.id
+        }
+        count += 1
+
+        # DM them
+        try:
+            await member.send(
+                f"Hello {member.mention}! 🌸 I'm **Lisa** — your multilingual companion on **{guild.name}**!\n"
+                "I help everyone chat in their own language.\n"
+                f"Please go to **#{common_ch.name}** and tell me your name to get started!"
+            )
+        except discord.Forbidden:
+            pass
+
+        # Give access to common channel
+        if common_ch:
+            try:
+                await common_ch.set_permissions(member, read_messages=True, send_messages=True)
+            except discord.Forbidden:
+                pass
+
+        await asyncio.sleep(0.5)  # Avoid rate limits
+
+    _save()
+    await ctx.send(
+        f"🌸 Done! Sent onboarding messages to **{count}** members.\n"
+        "They will be asked for their name, country and language in the common channel."
+    )
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

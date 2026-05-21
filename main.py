@@ -1,5 +1,5 @@
 """
-Lisa AI Discord Bot - FULL UPDATED VERSION
+Lisa AI Discord Bot - CLEAN FIXED VERSION
 """
 
 import os
@@ -42,8 +42,7 @@ async def ask_ai(prompt):
                     {
                         "role": "system",
                         "content": (
-                            "You are Lisa, a smart AI Discord assistant. "
-                            "You help server admins and users warmly."
+                            "You are Lisa, a smart AI Discord assistant."
                         )
                     },
                     {
@@ -163,4 +162,219 @@ async def on_message(message):
 
             for word in words:
 
-                if word not
+                if word not in ignore:
+
+                    channel_name = word
+                    break
+
+            if not channel_name:
+
+                await message.channel.send(
+                    "🌸 Please give a channel name."
+                )
+
+                return
+
+            target = discord.utils.get(
+                message.guild.channels,
+                name=channel_name
+            )
+
+            if not target:
+
+                await message.channel.send(
+                    f"🌸 #{channel_name} not found."
+                )
+
+                return
+
+            await target.delete()
+
+            return
+
+        # ================= CREATE ADMIN CHANNEL =================
+
+        if "create admin channel" in text:
+
+            guild = message.guild
+
+            existing = discord.utils.get(
+                guild.channels,
+                name="lisa-admin"
+            )
+
+            if existing:
+
+                await message.channel.send(
+                    "🌸 lisa-admin already exists."
+                )
+
+                return
+
+            overwrites = {
+                guild.default_role: discord.PermissionOverwrite(
+                    view_channel=False
+                )
+            }
+
+            for role in guild.roles:
+
+                if role.permissions.administrator:
+
+                    overwrites[role] = discord.PermissionOverwrite(
+                        view_channel=True,
+                        send_messages=True
+                    )
+
+            await guild.create_text_channel(
+                "lisa-admin",
+                overwrites=overwrites
+            )
+
+            await message.channel.send(
+                "🌸 Created private admin channel."
+            )
+
+            return
+
+        # ================= LOCK CHANNEL =================
+
+        if "lock this channel" in text:
+
+            overwrite = message.channel.overwrites_for(
+                message.guild.default_role
+            )
+
+            overwrite.send_messages = False
+
+            await message.channel.set_permissions(
+                message.guild.default_role,
+                overwrite=overwrite
+            )
+
+            await message.channel.send(
+                "🌸 Channel locked."
+            )
+
+            return
+
+        # ================= UNLOCK CHANNEL =================
+
+        if "unlock this channel" in text:
+
+            overwrite = message.channel.overwrites_for(
+                message.guild.default_role
+            )
+
+            overwrite.send_messages = True
+
+            await message.channel.set_permissions(
+                message.guild.default_role,
+                overwrite=overwrite
+            )
+
+            await message.channel.send(
+                "🌸 Channel unlocked."
+            )
+
+            return
+
+        # ================= ADMIN AI CHAT =================
+
+        response = await ask_ai(
+            f"""
+            Admin said:
+            {message.content}
+            """
+        )
+
+        await message.channel.send(response)
+
+        return
+
+    # =====================================================
+    # USER AI CHAT
+    # =====================================================
+
+    if bot.user in message.mentions:
+
+        cleaned = message.content.replace(
+            f"<@{bot.user.id}>",
+            ""
+        ).strip()
+
+        simple = cleaned.lower()
+
+        # ================= SIMPLE REPLIES =================
+
+        if (
+            "hello" in simple
+            or "hi" in simple
+            or "hey" in simple
+        ):
+
+            await message.reply(
+                "🌸 Hello! How can I help you today?"
+            )
+
+            return
+
+        if (
+            "how are you" in simple
+            or "how are u" in simple
+        ):
+
+            await message.reply(
+                "🌸 I'm doing great! How about you?"
+            )
+
+            return
+
+        if "who are you" in simple:
+
+            await message.reply(
+                "🌸 I'm Lisa, your AI Discord assistant!"
+            )
+
+            return
+
+        if "thank" in simple:
+
+            await message.reply(
+                "🌸 You're welcome!"
+            )
+
+            return
+
+        # ================= AI QUESTIONS =================
+
+        response = await ask_ai(
+            f"""
+            User said:
+            {cleaned}
+            """
+        )
+
+        await message.reply(response)
+
+        return
+
+    await bot.process_commands(message)
+
+# ================= HELP COMMAND =================
+
+@bot.command()
+async def help(ctx):
+
+    await ctx.send(
+        "🌸 Lisa Commands\n\n"
+        "Lisa create gaming channel\n"
+        "Lisa delete gaming channel\n"
+        "Lisa create admin channel\n"
+        "Lisa lock this channel\n"
+        "Lisa unlock this channel"
+    )
+
+# ================= START =================
+
+bot.run(TOKEN)

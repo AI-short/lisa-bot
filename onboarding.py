@@ -37,23 +37,29 @@ async def handle_onboarding(member):
 
         users = load_users()
 
-        # ======================================
-        # SKIP CONFIGURED USERS
-        # ======================================
-
         already_configured = False
 
-        # Database check
+        # ======================================
+        # DATABASE CHECK
+        # ======================================
+
         if str(member.id) in users:
             already_configured = True
 
-        # Role check
+        # ======================================
+        # ROLE CHECK
+        # ======================================
+
         for role in member.roles:
 
             if role.name.lower() in LANGUAGE_ROLES:
 
                 already_configured = True
                 break
+
+        # ======================================
+        # SKIP CONFIGURED USERS
+        # ======================================
 
         if already_configured:
 
@@ -221,6 +227,21 @@ async def process_user_language(bot, message):
             )
 
         # ======================================
+        # CREATE CATEGORY
+        # ======================================
+
+        category = discord.utils.get(
+            guild.categories,
+            name="🌍 Language Community"
+        )
+
+        if not category:
+
+            category = await guild.create_category(
+                "🌍 Language Community"
+            )
+
+        # ======================================
         # CREATE CHANNEL IF MISSING
         # ======================================
 
@@ -237,20 +258,40 @@ async def process_user_language(bot, message):
                 guild.default_role: discord.PermissionOverwrite(
                     view_channel=False
                 ),
+
                 role: discord.PermissionOverwrite(
                     view_channel=True,
                     send_messages=True
                 )
             }
 
+            # ==================================
+            # HIDE FROM ADMINS
+            # ==================================
+
+            for guild_role in guild.roles:
+
+                if guild_role.permissions.administrator:
+
+                    overwrites[guild_role] = (
+                        discord.PermissionOverwrite(
+                            view_channel=False
+                        )
+                    )
+
             channel = await guild.create_text_channel(
+
                 channel_name,
+
                 overwrites=overwrites,
+
+                category=category,
+
                 topic=f"{language} Viking Rise community"
             )
 
         # ======================================
-        # REMOVE COMMON ACCESS
+        # REMOVE COMMON CHANNEL ACCESS
         # ======================================
 
         common_channel = discord.utils.get(
@@ -272,7 +313,7 @@ async def process_user_language(bot, message):
             )
 
         # ======================================
-        # GIVE ROLE
+        # GIVE LANGUAGE ROLE
         # ======================================
 
         await member.add_roles(role)
@@ -296,7 +337,7 @@ async def process_user_language(bot, message):
             del onboarding_sessions[user_id]
 
         # ======================================
-        # SUCCESS RESPONSE
+        # SUCCESS MESSAGE
         # ======================================
 
         await message.channel.send(

@@ -40,18 +40,6 @@ async def on_ready():
     )
 
 # ==========================================
-# MEMBER JOIN
-# ==========================================
-
-@bot.event
-async def on_member_join(member):
-
-    await process_user_language(
-        bot,
-        member
-    )
-
-# ==========================================
 # MESSAGE EVENT
 # ==========================================
 
@@ -61,17 +49,6 @@ async def on_message(message):
     # Ignore self
     if message.author == bot.user:
         return
-
-    # ======================================
-    # SAFE ADMIN CHECK
-    # ======================================
-
-    is_admin = (
-        message.guild
-        and
-        message.author.guild_permissions
-        .administrator
-    )
 
     # ======================================
     # DM HANDLING
@@ -93,7 +70,12 @@ async def on_message(message):
     # ADMIN COMMANDS
     # ======================================
 
-    if is_admin:
+    if (
+        message.guild
+        and
+        message.author.guild_permissions
+        .administrator
+    ):
 
         content = message.content.lower()
 
@@ -126,3 +108,13 @@ async def on_message(message):
     )
 
     await bot.process_commands(message)
+
+# ==========================================
+# RUN BOT
+# ==========================================
+
+import os
+
+bot.run(
+    os.getenv("TOKEN")
+)

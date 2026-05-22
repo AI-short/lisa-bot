@@ -38,6 +38,7 @@ async def handle_onboarding(member):
         # ======================================
 
         if str(member.id) in users:
+
             already_configured = True
 
         # ======================================
@@ -82,7 +83,10 @@ async def handle_onboarding(member):
 
     except Exception as e:
 
-        print("DM ERROR:", e)
+        print(
+            "DM ERROR:",
+            e
+        )
 
 # ==========================================
 # AUTO ONBOARD EXISTING MEMBERS
@@ -145,7 +149,9 @@ async def process_user_language(bot, message):
 
         for g in bot.guilds:
 
-            m = g.get_member(message.author.id)
+            m = g.get_member(
+                message.author.id
+            )
 
             if m:
 
@@ -167,11 +173,11 @@ async def process_user_language(bot, message):
 
         removable_roles = []
 
-        for role_obj in member.roles:
+        for role in member.roles:
 
-            if role_obj.name.lower() in LANGUAGE_ROLES:
+            if role.name.lower() in LANGUAGE_ROLES:
 
-                removable_roles.append(role_obj)
+                removable_roles.append(role)
 
         if removable_roles:
 
@@ -180,7 +186,7 @@ async def process_user_language(bot, message):
             )
 
         # ======================================
-        # CREATE LANGUAGE ROLE
+        # FIND OR CREATE ROLE
         # ======================================
 
         role = discord.utils.get(
@@ -195,82 +201,7 @@ async def process_user_language(bot, message):
             )
 
         # ======================================
-        # CREATE CATEGORY
-        # ======================================
-
-        category = discord.utils.get(
-            guild.categories,
-            name="🌍 Language Community"
-        )
-
-        if not category:
-
-            category = await guild.create_category(
-                "🌍 Language Community"
-            )
-
-        # ======================================
-        # CREATE LANGUAGE CHANNEL
-        # ======================================
-
-        channel_name = language.lower()
-
-        channel = discord.utils.get(
-            guild.channels,
-            name=channel_name
-        )
-
-        if not channel:
-
-            overwrites = {
-
-                guild.default_role:
-                discord.PermissionOverwrite(
-                    view_channel=False
-                ),
-
-                role:
-                discord.PermissionOverwrite(
-                    view_channel=True,
-                    send_messages=True
-                )
-            }
-
-            channel = await guild.create_text_channel(
-
-                channel_name,
-
-                overwrites=overwrites,
-
-                category=category,
-
-                topic=f"{language} Viking Rise community"
-            )
-
-        # ======================================
-        # REMOVE TRIBE CHAT ACCESS
-        # ======================================
-
-        tribe_chat = discord.utils.get(
-            guild.channels,
-            name="tribe-chat"
-        )
-
-        if tribe_chat:
-
-            overwrite = (
-                tribe_chat.overwrites_for(role)
-            )
-
-            overwrite.view_channel = False
-
-            await tribe_chat.set_permissions(
-                role,
-                overwrite=overwrite
-            )
-
-        # ======================================
-        # GIVE LANGUAGE ROLE
+        # ASSIGN LANGUAGE ROLE
         # ======================================
 
         await member.add_roles(role)
@@ -293,8 +224,8 @@ async def process_user_language(bot, message):
             f"🌸 Setup completed successfully!\n\n"
             f"Country: {country}\n"
             f"Language: {language}\n\n"
-            f"Your main communication channel is now:\n"
-            f"#{channel_name}"
+            f"You now have access to:\n"
+            f"#{language.lower()}"
         )
 
         print(

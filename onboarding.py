@@ -167,11 +167,11 @@ async def process_user_language(bot, message):
 
         removable_roles = []
 
-        for role in member.roles:
+        for role_obj in member.roles:
 
-            if role.name.lower() in LANGUAGE_ROLES:
+            if role_obj.name.lower() in LANGUAGE_ROLES:
 
-                removable_roles.append(role)
+                removable_roles.append(role_obj)
 
         if removable_roles:
 
@@ -258,9 +258,15 @@ async def process_user_language(bot, message):
 
         if tribe_chat:
 
+            overwrite = (
+                tribe_chat.overwrites_for(role)
+            )
+
+            overwrite.view_channel = False
+
             await tribe_chat.set_permissions(
-                member,
-                view_channel=False
+                role,
+                overwrite=overwrite
             )
 
         # ======================================

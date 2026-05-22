@@ -7,12 +7,6 @@ from database import (
 )
 
 # ==========================================
-# ACTIVE ONBOARDING SESSIONS
-# ==========================================
-
-onboarding_sessions = {}
-
-# ==========================================
 # LANGUAGE ROLES
 # ==========================================
 
@@ -70,14 +64,6 @@ async def handle_onboarding(member):
             return
 
         # ======================================
-        # STORE SESSION
-        # ======================================
-
-        onboarding_sessions[
-            member.id
-        ] = member.guild.id
-
-        # ======================================
         # SEND DM
         # ======================================
 
@@ -121,42 +107,6 @@ async def process_user_language(bot, message):
 
     try:
 
-        user_id = message.author.id
-
-        # ======================================
-        # CHECK SESSION
-        # ======================================
-
-        if user_id not in onboarding_sessions:
-
-            await message.channel.send(
-                "🌸 No active onboarding session found."
-            )
-
-            return
-
-        guild_id = onboarding_sessions[user_id]
-
-        guild = bot.get_guild(guild_id)
-
-        if not guild:
-
-            await message.channel.send(
-                "🌸 Server not found."
-            )
-
-            return
-
-        member = guild.get_member(user_id)
-
-        if not member:
-
-            await message.channel.send(
-                "🌸 Could not find your server profile."
-            )
-
-            return
-
         content = message.content.strip()
 
         # ======================================
@@ -167,13 +117,6 @@ async def process_user_language(bot, message):
             "Country:" not in content
             or "Language:" not in content
         ):
-
-            await message.channel.send(
-                "🌸 Invalid format.\n\n"
-                "Use:\n"
-                "Country: India\n"
-                "Language: Hindi"
-            )
 
             return
 
@@ -192,6 +135,31 @@ async def process_user_language(bot, message):
             .strip()
             .title()
         )
+
+        # ======================================
+        # FIND MEMBER ACROSS GUILDS
+        # ======================================
+
+        guild = None
+        member = None
+
+        for g in bot.guilds:
+
+            m = g.get_member(message.author.id)
+
+            if m:
+
+                guild = g
+                member = m
+                break
+
+        if not guild or not member:
+
+            await message.channel.send(
+                "🌸 Could not find your server profile."
+            )
+
+            return
 
         # ======================================
         # REMOVE OLD LANGUAGE ROLES
@@ -255,11 +223,14 @@ async def process_user_language(bot, message):
         if not channel:
 
             overwrites = {
-                guild.default_role: discord.PermissionOverwrite(
+
+                guild.default_role:
+                discord.PermissionOverwrite(
                     view_channel=False
                 ),
 
-                role: discord.PermissionOverwrite(
+                role:
+                discord.PermissionOverwrite(
                     view_channel=True,
                     send_messages=True
                 )
@@ -329,15 +300,7 @@ async def process_user_language(bot, message):
         )
 
         # ======================================
-        # REMOVE SESSION
-        # ======================================
-
-        if user_id in onboarding_sessions:
-
-            del onboarding_sessions[user_id]
-
-        # ======================================
-        # SUCCESS MESSAGE
+        # SUCCESS RESPONSE
         # ======================================
 
         await message.channel.send(

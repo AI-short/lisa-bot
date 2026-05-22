@@ -7,6 +7,10 @@ from onboarding import (
     auto_onboard_existing_members
 )
 
+from translation import (
+    handle_translation
+)
+
 # ======================================
 # INTENTS
 # ======================================
@@ -36,6 +40,17 @@ async def on_ready():
     print(
         f"🌸 Lisa Online: {bot.user}"
     )
+
+# ======================================
+# MEMBER JOIN
+# ======================================
+
+@bot.event
+async def on_member_join(member):
+
+    await asyncio.sleep(2)
+
+    await handle_onboarding(member)
 
 # ======================================
 # MESSAGE EVENT
@@ -112,6 +127,14 @@ async def on_message(message):
         )
 
         return
+
+    # ======================================
+    # HANDLE TRANSLATIONS
+    # ======================================
+
+    await handle_translation(
+        message
+    )
 
     # ======================================
     # CONTINUE NORMAL COMMANDS

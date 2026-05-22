@@ -1,9 +1,11 @@
+import os
 import discord
 from discord.ext import commands
 
 from onboarding import (
     auto_onboard_existing_members,
-    process_user_language
+    process_user_language,
+    handle_onboarding
 )
 
 from translation import (
@@ -18,9 +20,10 @@ intents = discord.Intents.default()
 
 intents.message_content = True
 intents.members = True
+intents.guilds = True
 
 # ==========================================
-# BOT
+# BOT SETUP
 # ==========================================
 
 bot = commands.Bot(
@@ -29,7 +32,7 @@ bot = commands.Bot(
 )
 
 # ==========================================
-# READY EVENT
+# BOT READY
 # ==========================================
 
 @bot.event
@@ -40,18 +43,30 @@ async def on_ready():
     )
 
 # ==========================================
+# AUTO ONBOARD NEW MEMBERS
+# ==========================================
+
+@bot.event
+async def on_member_join(member):
+
+    await handle_onboarding(member)
+
+# ==========================================
 # MESSAGE EVENT
 # ==========================================
 
 @bot.event
 async def on_message(message):
 
-    # Ignore self
+    # ======================================
+    # IGNORE BOT ITSELF
+    # ======================================
+
     if message.author == bot.user:
         return
 
     # ======================================
-    # DM HANDLING
+    # DM PROCESSING
     # ======================================
 
     if isinstance(
@@ -67,17 +82,29 @@ async def on_message(message):
         return
 
     # ======================================
+    # SAFE ADMIN CHECK
+    # ======================================
+
+    is_admin = False
+
+    if message.guild:
+
+        is_admin = (
+            message.author.guild_permissions
+            .administrator
+        )
+
+    # ======================================
     # ADMIN COMMANDS
     # ======================================
 
-    if (
-        message.guild
-        and
-        message.author.guild_permissions
-        .administrator
-    ):
+    if is_admin:
 
         content = message.content.lower()
+
+        # ==================================
+        # START ONBOARDING
+        # ==================================
 
         if (
             "lisa setup language onboarding"
@@ -99,7 +126,7 @@ async def on_message(message):
             return
 
     # ======================================
-    # TRANSLATION
+    # TRANSLATION SYSTEM
     # ======================================
 
     await handle_translation(
@@ -107,13 +134,15 @@ async def on_message(message):
         message
     )
 
+    # ======================================
+    # PROCESS COMMANDS
+    # ======================================
+
     await bot.process_commands(message)
 
 # ==========================================
 # RUN BOT
 # ==========================================
-
-import os
 
 bot.run(
     os.getenv("TOKEN")

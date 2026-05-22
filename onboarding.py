@@ -85,7 +85,7 @@ async def handle_onboarding(member):
         print("DM ERROR:", e)
 
 # ==========================================
-# ONBOARD EXISTING MEMBERS
+# AUTO ONBOARD EXISTING MEMBERS
 # ==========================================
 
 async def auto_onboard_existing_members(guild):
@@ -137,7 +137,7 @@ async def process_user_language(bot, message):
         )
 
         # ======================================
-        # FIND MEMBER ACROSS GUILDS
+        # FIND MEMBER
         # ======================================
 
         guild = None
@@ -180,7 +180,7 @@ async def process_user_language(bot, message):
             )
 
         # ======================================
-        # CREATE ROLE IF MISSING
+        # CREATE LANGUAGE ROLE
         # ======================================
 
         role = discord.utils.get(
@@ -210,7 +210,7 @@ async def process_user_language(bot, message):
             )
 
         # ======================================
-        # CREATE CHANNEL IF MISSING
+        # CREATE LANGUAGE CHANNEL
         # ======================================
 
         channel_name = language.lower()
@@ -262,23 +262,23 @@ async def process_user_language(bot, message):
             )
 
         # ======================================
-        # REMOVE COMMON CHANNEL ACCESS
+        # REMOVE TRIBE CHAT ACCESS
         # ======================================
 
-        common_channel = discord.utils.get(
+        tribe_chat = discord.utils.get(
             guild.channels,
-            name="common"
+            name="tribe-chat"
         )
 
-        if common_channel:
+        if tribe_chat:
 
-            overwrite = common_channel.overwrites_for(
-                member
+            overwrite = (
+                tribe_chat.overwrites_for(member)
             )
 
             overwrite.view_channel = False
 
-            await common_channel.set_permissions(
+            await tribe_chat.set_permissions(
                 member,
                 overwrite=overwrite
             )
@@ -300,7 +300,7 @@ async def process_user_language(bot, message):
         )
 
         # ======================================
-        # SUCCESS RESPONSE
+        # SUCCESS MESSAGE
         # ======================================
 
         await message.channel.send(
@@ -317,7 +317,10 @@ async def process_user_language(bot, message):
 
     except Exception as e:
 
-        print("PROCESS ERROR:", e)
+        print(
+            "PROCESS ERROR:",
+            e
+        )
 
         await message.channel.send(
             f"🌸 Error:\n{e}"

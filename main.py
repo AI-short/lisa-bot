@@ -28,9 +28,7 @@ intents.guilds = True
 # ==========================================
 
 bot = commands.Bot(
-
     command_prefix="!",
-
     intents=intents
 )
 
@@ -45,10 +43,6 @@ async def on_ready():
         f"🌸 Lisa Online: {bot.user}"
     )
 
-    # ======================================
-    # AUTO ONBOARD EXISTING MEMBERS
-    # ======================================
-
     for guild in bot.guilds:
 
         await auto_onboard_existing_members(
@@ -56,7 +50,7 @@ async def on_ready():
         )
 
 # ==========================================
-# MEMBER JOIN EVENT
+# MEMBER JOIN
 # ==========================================
 
 @bot.event
@@ -70,6 +64,12 @@ async def on_member_join(member):
 
 @bot.event
 async def on_message(message):
+
+    print(
+        f"Message received -> "
+        f"{message.author} -> "
+        f"{message.channel.name}"
+    )
 
     # ======================================
     # IGNORE BOT MESSAGES

@@ -64,26 +64,6 @@ async def handle_translation(bot, message):
         guild = message.guild
 
         # ======================================
-        # SEND ORIGINAL TO TRIBE CHAT
-        # ======================================
-
-        tribe_chat = discord.utils.get(
-            guild.channels,
-            name="tribe-chat"
-        )
-
-        if (
-            tribe_chat
-            and
-            source_channel != "tribe-chat"
-        ):
-
-            await tribe_chat.send(
-                f"🌍 {message.author.display_name}:\n"
-                f"{message.content}"
-            )
-
-        # ======================================
         # DETECT SOURCE LANGUAGE
         # ======================================
 
@@ -142,19 +122,12 @@ async def handle_translation(bot, message):
                 continue
 
             # ==================================
-            # DETERMINE TARGET LANGUAGE
+            # TRANSLATE MESSAGE
             # ==================================
 
             target_lang = LANGUAGE_MAP.get(
                 target_channel
             )
-
-            if not target_lang:
-                continue
-
-            # ==================================
-            # TRANSLATE MESSAGE
-            # ==================================
 
             translated = translator.translate(
                 message.content,

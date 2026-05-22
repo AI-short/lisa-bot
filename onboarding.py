@@ -113,18 +113,20 @@ async def process_user_language(bot, message):
 
         content = message.content.strip()
 
-        # ======================================
+        # =========================
         # VALIDATE FORMAT
-        # ======================================
+        # =========================
 
         if (
             "Country:" not in content
             or "Language:" not in content
         ):
-
             return
 
         lines = content.split("\n")
+
+        if len(lines) < 2:
+            return
 
         country = (
             lines[0]
@@ -140,9 +142,9 @@ async def process_user_language(bot, message):
             .title()
         )
 
-        # ======================================
+        # =========================
         # FIND MEMBER
-        # ======================================
+        # =========================
 
         guild = None
         member = None
@@ -167,9 +169,9 @@ async def process_user_language(bot, message):
 
             return
 
-        # ======================================
+        # =========================
         # REMOVE OLD LANGUAGE ROLES
-        # ======================================
+        # =========================
 
         removable_roles = []
 
@@ -181,50 +183,102 @@ async def process_user_language(bot, message):
 
         if removable_roles:
 
-            await member.remove_roles(
-                *removable_roles
-            )
+            try:
 
-        # ======================================
-        # FIND OR CREATE ROLE
-        # ======================================
+                await member.remove_roles(
+                    *removable_roles
+                )
+
+            except Exception as e:
+
+                print(
+                    "ROLE REMOVE ERROR:",
+                    e
+                )
+
+        # =========================
+        # FIND LANGUAGE ROLE
+        # =========================
 
         role = discord.utils.get(
             guild.roles,
             name=language
         )
 
+        # =========================
+        # CREATE ROLE IF MISSING
+        # =========================
+
         if not role:
 
-            role = await guild.create_role(
-                name=language
+            try:
+
+                role = await guild.create_role(
+                    name=language
+                )
+
+            except Exception as e:
+
+                print(
+                    "ROLE CREATE ERROR:",
+                    e
+                )
+
+                await message.channel.send(
+                    "🌸 Could not create language role."
+                )
+
+                return
+
+        # =========================
+        # ADD ROLE
+        # =========================
+
+        try:
+
+            await member.add_roles(role)
+
+        except Exception as e:
+
+            print(
+                "ROLE ADD ERROR:",
+                e
             )
 
-        # ======================================
-        # ASSIGN LANGUAGE ROLE
-        # ======================================
+            await message.channel.send(
+                "🌸 Could not assign language role."
+            )
 
-        await member.add_roles(role)
+            return
 
-        # ======================================
+        # =========================
         # SAVE USER
-        # ======================================
+        # =========================
 
-        save_user(
-            str(member.id),
-            country,
-            language
-        )
+        try:
 
-        # ======================================
+            save_user(
+                str(member.id),
+                country,
+                language
+            )
+
+        except Exception as e:
+
+            print(
+                "DATABASE SAVE ERROR:",
+                e
+            )
+
+        # =========================
         # SUCCESS MESSAGE
-        # ======================================
+        # =========================
 
         await message.channel.send(
             f"🌸 Setup completed successfully!\n\n"
             f"Country: {country}\n"
             f"Language: {language}\n\n"
-            f"You now have access to:\n"
+            f"Your main communication channel is now:\n"
             f"#{language.lower()}"
         )
 
@@ -239,6 +293,11 @@ async def process_user_language(bot, message):
             e
         )
 
-        await message.channel.send(
-            f"🌸 Error:\n{e}"
-        )
+        try:
+
+            await message.channel.send(
+                f"🌸 Error:\n{e}"
+            )
+
+        except:
+            pass

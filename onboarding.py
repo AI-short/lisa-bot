@@ -7,19 +7,10 @@ from database import (
 )
 
 # ==========================================
-# LANGUAGE ROLES
+# DYNAMIC LANGUAGE ROLES
 # ==========================================
 
-LANGUAGE_ROLES = [
-    "english",
-    "hindi",
-    "japanese",
-    "spanish",
-    "french",
-    "arabic",
-    "german",
-    "russian"
-]
+LANGUAGE_ROLES = []
 
 # ==========================================
 # SEND ONBOARDING DM
@@ -31,42 +22,13 @@ async def handle_onboarding(member):
 
         users = load_users()
 
-        already_configured = False
-
-        # ======================================
-        # DATABASE CHECK
-        # ======================================
-
         if str(member.id) in users:
-
-            already_configured = True
-
-        # ======================================
-        # ROLE CHECK
-        # ======================================
-
-        for role in member.roles:
-
-            if role.name.lower() in LANGUAGE_ROLES:
-
-                already_configured = True
-                break
-
-        # ======================================
-        # SKIP CONFIGURED USERS
-        # ======================================
-
-        if already_configured:
 
             print(
                 f"Skipping configured user: {member}"
             )
 
             return
-
-        # ======================================
-        # SEND DM
-        # ======================================
 
         dm = await member.create_dm()
 
@@ -89,7 +51,7 @@ async def handle_onboarding(member):
         )
 
 # ==========================================
-# AUTO ONBOARD EXISTING MEMBERS
+# AUTO ONBOARD MEMBERS
 # ==========================================
 
 async def auto_onboard_existing_members(guild):
@@ -104,7 +66,7 @@ async def auto_onboard_existing_members(guild):
         await asyncio.sleep(1)
 
 # ==========================================
-# PROCESS USER LANGUAGE
+# PROCESS LANGUAGE
 # ==========================================
 
 async def process_user_language(bot, message):
@@ -112,10 +74,6 @@ async def process_user_language(bot, message):
     try:
 
         content = message.content.strip()
-
-        # =========================
-        # VALIDATE FORMAT
-        # =========================
 
         if (
             "Country:" not in content
@@ -142,9 +100,9 @@ async def process_user_language(bot, message):
             .title()
         )
 
-        # =========================
+        # ======================================
         # FIND MEMBER
-        # =========================
+        # ======================================
 
         guild = None
         member = None
@@ -169,15 +127,20 @@ async def process_user_language(bot, message):
 
             return
 
-        # =========================
+        # ======================================
         # REMOVE OLD LANGUAGE ROLES
-        # =========================
+        # ======================================
 
         removable_roles = []
 
         for role in member.roles:
 
-            if role.name.lower() in LANGUAGE_ROLES:
+            if role.name.lower() not in [
+                "@everyone",
+                "admin",
+                "moderator",
+                "lisa"
+            ]:
 
                 removable_roles.append(role)
 
@@ -196,18 +159,14 @@ async def process_user_language(bot, message):
                     e
                 )
 
-        # =========================
-        # FIND LANGUAGE ROLE
-        # =========================
+        # ======================================
+        # FIND OR CREATE ROLE
+        # ======================================
 
         role = discord.utils.get(
             guild.roles,
             name=language
         )
-
-        # =========================
-        # CREATE ROLE IF MISSING
-        # =========================
 
         if not role:
 
@@ -215,6 +174,10 @@ async def process_user_language(bot, message):
 
                 role = await guild.create_role(
                     name=language
+                )
+
+                print(
+                    f"Created role: {language}"
                 )
 
             except Exception as e:
@@ -230,9 +193,85 @@ async def process_user_language(bot, message):
 
                 return
 
-        # =========================
-        # ADD ROLE
-        # =========================
+        # ======================================
+        # FIND OR CREATE CATEGORY
+        # ======================================
+
+        category = discord.utils.get(
+            guild.categories,
+            name="🌍 Language Community"
+        )
+
+        if not category:
+
+            category = await guild.create_category(
+                "🌍 Language Community"
+            )
+
+        # ======================================
+        # FIND OR CREATE CHANNEL
+        # ======================================
+
+        channel_name = (
+            language.lower()
+            .replace(" ", "-")
+        )
+
+        channel = discord.utils.get(
+            guild.text_channels,
+            name=channel_name
+        )
+
+        if not channel:
+
+            try:
+
+                overwrites = {
+
+                    guild.default_role:
+                    discord.PermissionOverwrite(
+                        view_channel=False
+                    ),
+
+                    role:
+                    discord.PermissionOverwrite(
+                        view_channel=True,
+                        send_messages=True,
+                        read_message_history=True
+                    ),
+
+                    guild.me:
+                    discord.PermissionOverwrite(
+                        view_channel=True,
+                        send_messages=True,
+                        read_message_history=True,
+                        manage_webhooks=True
+                    )
+                }
+
+                channel = await guild.create_text_channel(
+
+                    name=channel_name,
+
+                    overwrites=overwrites,
+
+                    category=category
+                )
+
+                print(
+                    f"Created channel: {channel_name}"
+                )
+
+            except Exception as e:
+
+                print(
+                    "CHANNEL CREATE ERROR:",
+                    e
+                )
+
+        # ======================================
+        # ASSIGN ROLE
+        # ======================================
 
         try:
 
@@ -251,9 +290,9 @@ async def process_user_language(bot, message):
 
             return
 
-        # =========================
+        # ======================================
         # SAVE USER
-        # =========================
+        # ======================================
 
         try:
 
@@ -270,16 +309,16 @@ async def process_user_language(bot, message):
                 e
             )
 
-        # =========================
+        # ======================================
         # SUCCESS MESSAGE
-        # =========================
+        # ======================================
 
         await message.channel.send(
             f"🌸 Setup completed successfully!\n\n"
             f"Country: {country}\n"
             f"Language: {language}\n\n"
             f"Your main communication channel is now:\n"
-            f"#{language.lower()}"
+            f"#{channel_name}"
         )
 
         print(

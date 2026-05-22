@@ -100,7 +100,7 @@ async def auto_onboard_existing_members(guild):
         await asyncio.sleep(1)
 
 # ==========================================
-# PROCESS LANGUAGE SETUP
+# PROCESS USER LANGUAGE
 # ==========================================
 
 async def process_user_language(bot, message):
@@ -236,20 +236,6 @@ async def process_user_language(bot, message):
                 )
             }
 
-            # ==================================
-            # HIDE FROM ADMINS
-            # ==================================
-
-            for guild_role in guild.roles:
-
-                if guild_role.permissions.administrator:
-
-                    overwrites[guild_role] = (
-                        discord.PermissionOverwrite(
-                            view_channel=False
-                        )
-                    )
-
             channel = await guild.create_text_channel(
 
                 channel_name,
@@ -272,15 +258,9 @@ async def process_user_language(bot, message):
 
         if tribe_chat:
 
-            overwrite = (
-                tribe_chat.overwrites_for(member)
-            )
-
-            overwrite.view_channel = False
-
             await tribe_chat.set_permissions(
                 member,
-                overwrite=overwrite
+                view_channel=False
             )
 
         # ======================================

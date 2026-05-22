@@ -1,6 +1,34 @@
-from deep_translator import GoogleTranslator
-from langdetect import detect
 import discord
+from googletrans import Translator
+
+translator = Translator()
+
+# ==========================================
+# LANGUAGE MAP
+# ==========================================
+
+LANGUAGE_MAP = {
+    "english": "en",
+    "hindi": "hi",
+    "japanese": "ja",
+    "spanish": "es",
+    "french": "fr",
+    "arabic": "ar",
+    "german": "de",
+    "russian": "ru"
+}
+
+# ==========================================
+# IGNORED CHANNELS
+# ==========================================
+
+IGNORED_CHANNELS = [
+    "welcome",
+    "rules",
+    "announcements",
+    "redeem-codes",
+    "clips-and-highlights"
+]
 
 # ==========================================
 # TRANSLATION SYSTEM
@@ -8,119 +36,144 @@ import discord
 
 async def handle_translation(bot, message):
 
-    # Ignore bots
-    if message.author.bot:
-        return
-
-    # Ignore DMs
-    if isinstance(message.channel, discord.DMChannel):
-        return
-
-    guild = message.guild
-
-    # ==========================================
-    # IGNORE GLOBAL CHANNELS
-    # ==========================================
-
-    ignored_channels = [
-        "welcome",
-        "rules",
-        "announcements"
-    ]
-
-    if message.channel.name in ignored_channels:
-        return
-
-    # ==========================================
-    # DETECT SOURCE LANGUAGE
-    # ==========================================
-
     try:
 
-        source_language = detect(
-            message.content
+        # ======================================
+        # IGNORE BOTS
+        # ======================================
+
+        if message.author.bot:
+            return
+
+        # ======================================
+        # IGNORE EMPTY
+        # ======================================
+
+        if not message.content.strip():
+            return
+
+        source_channel = message.channel.name.lower()
+
+        # ======================================
+        # IGNORE SYSTEM CHANNELS
+        # ======================================
+
+        if source_channel in IGNORED_CHANNELS:
+            return
+
+        guild = message.guild
+
+        # ======================================
+        # SEND ORIGINAL TO TRIBE CHAT
+        # ======================================
+
+        tribe_chat = discord.utils.get(
+            guild.channels,
+            name="tribe-chat"
         )
 
-    except:
-        return
+        if (
+            tribe_chat
+            and
+            source_channel != "tribe-chat"
+        ):
 
-    # ==========================================
-    # TRANSLATE TO OTHER LANGUAGE CHANNELS
-    # ==========================================
+            await tribe_chat.send(
+                f"🌍 {message.author.display_name}:\n"
+                f"{message.content}"
+            )
 
-    for channel in guild.text_channels:
+        # ======================================
+        # DETECT SOURCE LANGUAGE
+        # ======================================
 
-        # Skip same channel
-        if channel.id == message.channel.id:
-            continue
+        source_lang = LANGUAGE_MAP.get(
+            source_channel,
+            "en"
+        )
 
-        # Skip ignored channels
-        if channel.name in ignored_channels:
-            continue
+        # ======================================
+        # TRANSLATE TO OTHER CHANNELS
+        # ======================================
 
-        # Skip non-language channels
-        if channel.name in [
-            "common",
-            "general",
-            "chat"
-        ]:
-            continue
+        for channel in guild.text_channels:
 
-        # ==========================================
-        # AVOID ADMIN NOTIFICATION SPAM
-        # ==========================================
+            target_channel = channel.name.lower()
 
-        try:
+            # ==================================
+            # SKIP SAME CHANNEL
+            # ==================================
 
-            # Translate message
-            translated_text = GoogleTranslator(
-                source="auto",
-                target=channel.name
-            ).translate(message.content)
+            if target_channel == source_channel:
+                continue
 
-        except:
-            continue
+            # ==================================
+            # SKIP IGNORED CHANNELS
+            # ==================================
 
-        # ==========================================
-        # CREATE / GET WEBHOOK
-        # ==========================================
+            if target_channel in IGNORED_CHANNELS:
+                continue
 
-        try:
+            # ==================================
+            # SKIP NON-LANGUAGE CHANNELS
+            # ==================================
 
-            webhooks = await channel.webhooks()
+            if (
+                target_channel != "tribe-chat"
+                and
+                target_channel not in LANGUAGE_MAP
+            ):
+                continue
 
-            webhook = None
+            # ==================================
+            # SEND ORIGINAL TO TRIBE CHAT
+            # ==================================
 
-            for wh in webhooks:
+            if target_channel == "tribe-chat":
 
-                if wh.name == "Lisa Translator":
+                if source_channel == "tribe-chat":
+                    continue
 
-                    webhook = wh
-                    break
-
-            if webhook is None:
-
-                webhook = await channel.create_webhook(
-                    name="Lisa Translator"
+                await channel.send(
+                    f"🌍 {message.author.display_name}:\n"
+                    f"{message.content}"
                 )
 
-            # ==========================================
-            # PREMIUM MESSAGE STYLE
-            # ==========================================
+                continue
 
-            await webhook.send(
+            # ==================================
+            # DETERMINE TARGET LANGUAGE
+            # ==================================
 
-                content=translated_text,
-
-                username=message.author.display_name,
-
-                avatar_url=message.author.display_avatar.url,
-
-                silent=True
+            target_lang = LANGUAGE_MAP.get(
+                target_channel
             )
 
-        except Exception as e:
+            if not target_lang:
+                continue
 
-            print(
-                f"WEBHOOK ERROR: {e}"
+            # ==================================
+            # TRANSLATE MESSAGE
+            # ==================================
+
+            translated = translator.translate(
+                message.content,
+                src=source_lang,
+                dest=target_lang
             )
+
+            # ==================================
+            # SEND TRANSLATED MESSAGE
+            # ==================================
+
+            await channel.send(
+                f"🌍 {message.author.display_name}:\n"
+                f"{translated.text}"
+            )
+
+    except Exception as e:
+
+        print(
+            "TRANSLATION ERROR:",
+            e
+        )

@@ -31,6 +31,24 @@ IGNORED_CHANNELS = [
 ]
 
 # ==========================================
+# GET OR CREATE WEBHOOK
+# ==========================================
+
+async def get_webhook(channel):
+
+    webhooks = await channel.webhooks()
+
+    for webhook in webhooks:
+
+        if webhook.name == "Lisa Relay":
+
+            return webhook
+
+    return await channel.create_webhook(
+        name="Lisa Relay"
+    )
+
+# ==========================================
 # TRANSLATION SYSTEM
 # ==========================================
 
@@ -52,7 +70,9 @@ async def handle_translation(bot, message):
         if not message.content.strip():
             return
 
-        source_channel = message.channel.name.lower()
+        source_channel = (
+            message.channel.name.lower()
+        )
 
         # ======================================
         # IGNORE SYSTEM CHANNELS
@@ -78,7 +98,9 @@ async def handle_translation(bot, message):
 
         for channel in guild.text_channels:
 
-            target_channel = channel.name.lower()
+            target_channel = (
+                channel.name.lower()
+            )
 
             # ==================================
             # SKIP SAME CHANNEL
@@ -88,22 +110,31 @@ async def handle_translation(bot, message):
                 continue
 
             # ==================================
-            # SKIP IGNORED CHANNELS
+            # SKIP SYSTEM CHANNELS
             # ==================================
 
             if target_channel in IGNORED_CHANNELS:
                 continue
 
             # ==================================
-            # SKIP NON-LANGUAGE CHANNELS
+            # SKIP INVALID CHANNELS
             # ==================================
 
             if (
                 target_channel != "tribe-chat"
                 and
-                target_channel not in LANGUAGE_MAP
+                target_channel
+                not in LANGUAGE_MAP
             ):
                 continue
+
+            # ==================================
+            # CREATE WEBHOOK
+            # ==================================
+
+            webhook = await get_webhook(
+                channel
+            )
 
             # ==================================
             # SEND ORIGINAL TO TRIBE CHAT
@@ -114,24 +145,42 @@ async def handle_translation(bot, message):
                 if source_channel == "tribe-chat":
                     continue
 
-                await channel.send(
-                    f"🌍 {message.author.display_name}:\n"
-                    f"{message.content}"
+                await webhook.send(
+
+                    content=message.content,
+
+                    username=(
+                        message.author.display_name
+                    ),
+
+                    avatar_url=(
+                        message.author.display_avatar.url
+                    )
                 )
 
                 continue
 
             # ==================================
-            # TRANSLATE MESSAGE
+            # TARGET LANGUAGE
             # ==================================
 
             target_lang = LANGUAGE_MAP.get(
                 target_channel
             )
 
+            if not target_lang:
+                continue
+
+            # ==================================
+            # TRANSLATE MESSAGE
+            # ==================================
+
             translated = translator.translate(
+
                 message.content,
+
                 src=source_lang,
+
                 dest=target_lang
             )
 
@@ -139,9 +188,17 @@ async def handle_translation(bot, message):
             # SEND TRANSLATED MESSAGE
             # ==================================
 
-            await channel.send(
-                f"🌍 {message.author.display_name}:\n"
-                f"{translated.text}"
+            await webhook.send(
+
+                content=translated.text,
+
+                username=(
+                    message.author.display_name
+                ),
+
+                avatar_url=(
+                    message.author.display_avatar.url
+                )
             )
 
     except Exception as e:

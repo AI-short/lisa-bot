@@ -1,6 +1,5 @@
 import discord
 from googletrans import Translator
-import traceback
 
 translator = Translator()
 
@@ -9,8 +8,10 @@ translator = Translator()
 # ==========================================
 
 LANGUAGE_MAP = {
+
     "english": "en",
     "hindi": "hi",
+    "hinglish": "hi",
     "japanese": "ja",
     "spanish": "es",
     "french": "fr",
@@ -20,218 +21,213 @@ LANGUAGE_MAP = {
 }
 
 # ==========================================
-# IGNORED CHANNELS
+# TRANSLATE TEXT
 # ==========================================
 
-IGNORED_CHANNELS = [
-    "welcome",
-    "rules",
-    "announcements",
-    "redeem-codes",
-    "clips-and-highlights"
-]
-
-# ==========================================
-# GET OR CREATE WEBHOOK
-# ==========================================
-
-async def get_webhook(channel):
-
-    webhooks = await channel.webhooks()
-
-    for webhook in webhooks:
-
-        if webhook.name == "Lisa Relay":
-
-            return webhook
-
-    return await channel.create_webhook(
-        name="Lisa Relay"
-    )
-
-# ==========================================
-# TRANSLATION SYSTEM
-# ==========================================
-
-async def handle_translation(bot, message):
+async def translate_text(text, dest):
 
     try:
 
-        print(
-            f"Translation triggered -> "
-            f"{message.channel.name} -> "
-            f"{message.content}"
+        translated = translator.translate(
+            text,
+            dest=dest
         )
 
+        return translated.text
+
+    except Exception as e:
+
+        print(
+            "TRANSLATION ERROR:",
+            e
+        )
+
+        return text
+
+# ==========================================
+# RELAY TO TRIBE CHAT
+# ==========================================
+
+async def relay_to_tribe_chat(message):
+
+    try:
+
+        guild = message.guild
+
+        tribe_chat = discord.utils.get(
+            guild.text_channels,
+            name="tribe-chat"
+        )
+
+        if not tribe_chat:
+            return
+
         # ======================================
-        # IGNORE BOTS
+        # CREATE WEBHOOK
         # ======================================
+
+        webhooks = await tribe_chat.webhooks()
+
+        webhook = None
+
+        for wh in webhooks:
+
+            if wh.name == "Lisa Relay":
+
+                webhook = wh
+                break
+
+        if not webhook:
+
+            webhook = await tribe_chat.create_webhook(
+                name="Lisa Relay"
+            )
+
+        # ======================================
+        # SEND MESSAGE
+        # ======================================
+
+        await webhook.send(
+
+            content=message.content,
+
+            username=message.author.display_name,
+
+            avatar_url=message.author.display_avatar.url
+        )
+
+        print(
+            f"Relayed message from "
+            f"{message.author}"
+        )
+
+    except Exception as e:
+
+        print(
+            "TRIBE RELAY ERROR:",
+            e
+        )
+
+# ==========================================
+# HANDLE TRANSLATION
+# ==========================================
+
+async def handle_translation(message):
+
+    try:
+
+        if not message.guild:
+            return
 
         if message.author.bot:
             return
 
-        # ======================================
-        # IGNORE EMPTY
-        # ======================================
-
-        if not message.content.strip():
-            return
-
-        guild = message.guild
-
-        if not guild:
-            return
-
-        source_channel = (
+        channel_name = (
             message.channel.name.lower()
         )
 
         # ======================================
-        # IGNORE SYSTEM CHANNELS
+        # SKIP TRIBE CHAT
         # ======================================
 
-        if source_channel in IGNORED_CHANNELS:
+        if channel_name == "tribe-chat":
             return
 
         # ======================================
-        # SOURCE LANGUAGE
+        # DETECT SOURCE LANGUAGE
         # ======================================
 
-        source_lang = LANGUAGE_MAP.get(
-            source_channel,
-            "en"
+        source_language = channel_name
+
+        source_code = LANGUAGE_MAP.get(
+            source_language
+        )
+
+        if not source_code:
+            return
+
+        print(
+            f"Translation triggered -> "
+            f"{source_language}"
         )
 
         # ======================================
-        # LOOP CHANNELS
+        # RELAY ORIGINAL MESSAGE
         # ======================================
 
-        for channel in guild.text_channels:
+        await relay_to_tribe_chat(
+            message
+        )
 
-            target_channel = (
-                channel.name.lower()
-            )
+        # ======================================
+        # TRANSLATE TO OTHER CHANNELS
+        # ======================================
 
-            # ==================================
-            # SKIP SAME CHANNEL
-            # ==================================
+        for target_language, target_code in LANGUAGE_MAP.items():
 
-            if target_channel == source_channel:
+            if target_language == source_language:
                 continue
 
-            # ==================================
-            # SKIP SYSTEM CHANNELS
-            # ==================================
+            target_channel = discord.utils.get(
 
-            if target_channel in IGNORED_CHANNELS:
-                continue
+                message.guild.text_channels,
 
-            # ==================================
-            # VALID TARGETS
-            # ==================================
-
-            if (
-                target_channel != "tribe-chat"
-                and
-                target_channel
-                not in LANGUAGE_MAP
-            ):
-                continue
-
-            print(
-                f"Sending to -> {target_channel}"
+                name=target_language
             )
 
-            # ==================================
-            # GET WEBHOOK
-            # ==================================
+            if not target_channel:
+                continue
 
-            webhook = await get_webhook(
-                channel
-            )
+            try:
 
-            # ==================================
-            # TRIBE CHAT
-            # ==================================
+                translated_text = await translate_text(
 
-            if target_channel == "tribe-chat":
+                    message.content,
 
-                if source_channel == "tribe-chat":
-                    continue
+                    target_code
+                )
+
+                webhooks = await target_channel.webhooks()
+
+                webhook = None
+
+                for wh in webhooks:
+
+                    if wh.name == "Lisa Translation":
+
+                        webhook = wh
+                        break
+
+                if not webhook:
+
+                    webhook = await target_channel.create_webhook(
+                        name="Lisa Translation"
+                    )
 
                 await webhook.send(
 
-                    content=message.content,
+                    content=translated_text,
 
-                    username=(
-                        message.author.display_name
-                    ),
+                    username=message.author.display_name,
 
-                    avatar_url=(
-                        message.author.display_avatar.url
-                    )
+                    avatar_url=message.author.display_avatar.url
                 )
 
                 print(
-                    "Sent to tribe-chat"
+                    f"Translated -> "
+                    f"{target_language}"
                 )
 
-                continue
+            except Exception as e:
 
-            # ==================================
-            # TARGET LANGUAGE
-            # ==================================
-
-            target_lang = LANGUAGE_MAP.get(
-                target_channel
-            )
-
-            if not target_lang:
-                continue
-
-            # ==================================
-            # TRANSLATE
-            # ======================================
-
-            translated = translator.translate(
-
-                message.content,
-
-                src=source_lang,
-
-                dest=target_lang
-            )
-
-            # ======================================
-            # SEND TRANSLATED
-            # ======================================
-
-            await webhook.send(
-
-                content=translated.text,
-
-                username=(
-                    message.author.display_name
-                ),
-
-                avatar_url=(
-                    message.author.display_avatar.url
+                print(
+                    "CHANNEL TRANSLATION ERROR:",
+                    e
                 )
-            )
 
-            print(
-                f"Translated sent -> "
-                f"{target_channel}"
-            )
-
-    except Exception:
+    except Exception as e:
 
         print(
-            "\n===== TRANSLATION ERROR =====\n"
-        )
-
-        traceback.print_exc()
-
-        print(
-            "\n=============================\n"
+            "HANDLE TRANSLATION ERROR:",
+            e
         )

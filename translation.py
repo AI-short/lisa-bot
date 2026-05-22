@@ -139,7 +139,7 @@ async def handle_translation(message):
             return
 
         # ======================================
-        # SEND TO TRIBE CHAT
+        # SEND ENGLISH TO TRIBE CHAT
         # ======================================
 
         tribe_chat = discord.utils.get(
@@ -154,11 +154,18 @@ async def handle_translation(message):
             and channel_name != "tribe-chat"
         ):
 
+            english_text = await translate_text(
+
+                message.content,
+
+                "en"
+            )
+
             await send_webhook_message(
 
                 tribe_chat,
 
-                message.content,
+                english_text,
 
                 message.author.display_name,
 
@@ -188,6 +195,16 @@ async def handle_translation(message):
             if (
                 target_channel.id
                 == message.channel.id
+            ):
+                continue
+
+            # ==================================
+            # SKIP TRIBE SOURCE LOOP
+            # ==================================
+
+            if (
+                channel_name == "tribe-chat"
+                and target_language == "english"
             ):
                 continue
 

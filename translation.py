@@ -1,5 +1,7 @@
 import discord
 from googletrans import Translator
+from indic_transliteration import sanscript
+from indic_transliteration.sanscript import transliterate
 
 translator = Translator()
 
@@ -39,6 +41,34 @@ async def translate_text(text, dest):
 
         print(
             "TRANSLATION ERROR:",
+            e
+        )
+
+        return text
+
+# ==========================================
+# HINDI TO HINGLISH
+# ==========================================
+
+async def hindi_to_hinglish(text):
+
+    try:
+
+        hinglish = transliterate(
+
+            text,
+
+            sanscript.DEVANAGARI,
+
+            sanscript.ITRANS
+        )
+
+        return hinglish
+
+    except Exception as e:
+
+        print(
+            "HINGLISH ERROR:",
             e
         )
 
@@ -199,7 +229,7 @@ async def handle_translation(message):
                 continue
 
             # ==================================
-            # SKIP TRIBE SOURCE LOOP
+            # SKIP ENGLISH LOOP
             # ==================================
 
             if (
@@ -210,12 +240,36 @@ async def handle_translation(message):
 
             try:
 
-                translated_text = await translate_text(
+                # ==============================
+                # HINGLISH PIPELINE
+                # ==============================
 
-                    message.content,
+                if target_language == "hinglish":
 
-                    target_code
-                )
+                    # Step 1 → Hindi translation
+
+                    hindi_text = await translate_text(
+
+                        message.content,
+
+                        "hi"
+                    )
+
+                    # Step 2 → Hinglish transliteration
+
+                    translated_text = await hindi_to_hinglish(
+
+                        hindi_text
+                    )
+
+                else:
+
+                    translated_text = await translate_text(
+
+                        message.content,
+
+                        target_code
+                    )
 
                 await send_webhook_message(
 

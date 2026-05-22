@@ -1,5 +1,6 @@
 import discord
 from googletrans import Translator
+import traceback
 
 translator = Translator()
 
@@ -56,6 +57,12 @@ async def handle_translation(bot, message):
 
     try:
 
+        print(
+            f"Translation triggered -> "
+            f"{message.channel.name} -> "
+            f"{message.content}"
+        )
+
         # ======================================
         # IGNORE BOTS
         # ======================================
@@ -70,6 +77,11 @@ async def handle_translation(bot, message):
         if not message.content.strip():
             return
 
+        guild = message.guild
+
+        if not guild:
+            return
+
         source_channel = (
             message.channel.name.lower()
         )
@@ -81,10 +93,8 @@ async def handle_translation(bot, message):
         if source_channel in IGNORED_CHANNELS:
             return
 
-        guild = message.guild
-
         # ======================================
-        # DETECT SOURCE LANGUAGE
+        # SOURCE LANGUAGE
         # ======================================
 
         source_lang = LANGUAGE_MAP.get(
@@ -93,7 +103,7 @@ async def handle_translation(bot, message):
         )
 
         # ======================================
-        # TRANSLATE TO OTHER CHANNELS
+        # LOOP CHANNELS
         # ======================================
 
         for channel in guild.text_channels:
@@ -117,7 +127,7 @@ async def handle_translation(bot, message):
                 continue
 
             # ==================================
-            # SKIP INVALID CHANNELS
+            # VALID TARGETS
             # ==================================
 
             if (
@@ -128,8 +138,12 @@ async def handle_translation(bot, message):
             ):
                 continue
 
+            print(
+                f"Sending to -> {target_channel}"
+            )
+
             # ==================================
-            # CREATE WEBHOOK
+            # GET WEBHOOK
             # ==================================
 
             webhook = await get_webhook(
@@ -137,7 +151,7 @@ async def handle_translation(bot, message):
             )
 
             # ==================================
-            # SEND ORIGINAL TO TRIBE CHAT
+            # TRIBE CHAT
             # ==================================
 
             if target_channel == "tribe-chat":
@@ -158,6 +172,10 @@ async def handle_translation(bot, message):
                     )
                 )
 
+                print(
+                    "Sent to tribe-chat"
+                )
+
                 continue
 
             # ==================================
@@ -172,8 +190,8 @@ async def handle_translation(bot, message):
                 continue
 
             # ==================================
-            # TRANSLATE MESSAGE
-            # ==================================
+            # TRANSLATE
+            # ======================================
 
             translated = translator.translate(
 
@@ -184,9 +202,9 @@ async def handle_translation(bot, message):
                 dest=target_lang
             )
 
-            # ==================================
-            # SEND TRANSLATED MESSAGE
-            # ==================================
+            # ======================================
+            # SEND TRANSLATED
+            # ======================================
 
             await webhook.send(
 
@@ -201,9 +219,19 @@ async def handle_translation(bot, message):
                 )
             )
 
-    except Exception as e:
+            print(
+                f"Translated sent -> "
+                f"{target_channel}"
+            )
+
+    except Exception:
 
         print(
-            "TRANSLATION ERROR:",
-            e
+            "\n===== TRANSLATION ERROR =====\n"
+        )
+
+        traceback.print_exc()
+
+        print(
+            "\n=============================\n"
         )

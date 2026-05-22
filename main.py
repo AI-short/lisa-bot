@@ -65,10 +65,16 @@ async def on_member_join(member):
 @bot.event
 async def on_message(message):
 
+    channel_name = getattr(
+        message.channel,
+        "name",
+        "DM"
+    )
+
     print(
         f"Message received -> "
         f"{message.author} -> "
-        f"{message.channel.name}"
+        f"{channel_name}"
     )
 
     # ======================================
